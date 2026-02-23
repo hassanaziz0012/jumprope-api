@@ -7,4 +7,6 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi[standard]>=0.129.1",
     "google-genai>=1.64.0",
+    "python-dotenv>=1.2.1",
+    "sqlalchemy>=2.0.46",
 ]
