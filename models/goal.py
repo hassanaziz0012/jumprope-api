@@ -1,0 +1,16 @@
+from sqlalchemy import Column, Integer, Float, DateTime
+from sqlalchemy.sql import func
+from .base import Base
+
+class Goal(Base):
+    __tablename__ = "goals"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    daily_skips = Column(Integer, nullable=True)
+    weekly_skips = Column(Integer, nullable=True)
+    weekly_workouts = Column(Integer, nullable=True)
+    daily_calories = Column(Integer, nullable=True)
+    weekly_calories = Column(Integer, nullable=True)
+    weekly_duration = Column(Integer, nullable=True)
+    skip_rate_goal = Column(Float, nullable=True)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
