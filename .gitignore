@@ -11,3 +11,6 @@ wheels/
 
 # secrets
 .env
+
+# Database volumes
+postgres_data/
