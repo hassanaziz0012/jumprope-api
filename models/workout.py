@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from .base import Base
 
@@ -6,6 +6,7 @@ class Workout(Base):
     __tablename__ = "workout"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    user_profile_id = Column(Integer, ForeignKey("user_profile.id"), nullable=False)
     date = Column(DateTime, nullable=False, server_default=func.now())
     duration = Column(Integer, nullable=False)
     total_skips = Column(Integer, nullable=False)
