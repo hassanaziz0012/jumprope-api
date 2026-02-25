@@ -1,4 +1,6 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import get_db
@@ -23,9 +25,16 @@ class AskAgentRequest(BaseModel):
     message: str
 
 @router.post("/ask-agent")
-def ask_agent(request: AskAgentRequest):
-    response = ask_gemini(request.message)
-    return {"response": response}
+async def ask_agent(request: AskAgentRequest):
+    async def event_generator():
+        try:
+            async for update in ask_gemini(request.message):
+                yield update
+        except Exception as e:
+            print(f"Error generating response: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 def sync_user_profile(db: Session, user_data):
     user = db.query(UserProfile).filter(UserProfile.id == user_data.id).first()
