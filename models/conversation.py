@@ -13,9 +13,12 @@ class Conversation(Base):
     # Unique ID for the conversation (UUID as string is good for mobile sync)
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     title = Column(String, nullable=True, default="New Chat")
+    user_profile_id = Column(Integer, ForeignKey("user_profile.id", ondelete="CASCADE"), nullable=True)
     
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+
+    user_profile = relationship("UserProfile", backref="conversations")
 
     # Relationship to fetch all messages for this conversation easily
     messages = relationship("ConversationMessage", back_populates="conversation", cascade="all, delete-orphan", order_by="ConversationMessage.created_at")

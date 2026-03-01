@@ -3,7 +3,8 @@ from typing import List, Optional
 from datetime import datetime
 
 class UserProfileSchema(BaseModel):
-    id: int
+    id: Optional[int] = None
+    sync_token: str
     name: str
     email: Optional[str] = None
     image: Optional[str] = None
