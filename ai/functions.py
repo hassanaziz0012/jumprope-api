@@ -217,3 +217,65 @@ def get_chart_data(metric: str, chart_type: str, time_range: str) -> Dict[str, A
         return {"error": str(e)}
     finally:
         db.close()
+
+def create_workout(
+    user_profile_id: int,
+    duration: int,
+    total_skips: int,
+    date: str = None,
+    avg_skips_per_minute: float = None,
+    trips: int = 0,
+    calories: float = None,
+    heart_rate_avg: int = None,
+    heart_rate_max: int = None,
+    notes: str = None
+) -> Dict[str, Any]:
+    try:
+        if date:
+            dt = datetime.fromisoformat(date.replace('Z', '+00:00'))
+        else:
+            dt = datetime.now()
+            
+        return {
+            "user_profile_id": user_profile_id,
+            "date": dt.isoformat(),
+            "duration": duration,
+            "total_skips": total_skips,
+            "avg_skips_per_minute": avg_skips_per_minute,
+            "trips": trips,
+            "calories": calories,
+            "heart_rate_avg": heart_rate_avg,
+            "heart_rate_max": heart_rate_max,
+            "notes": notes
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+def mark_rest_day(user_profile_id: int, date: str) -> Dict[str, Any]:
+    try:
+        return {
+            "id": new_rest_day.id,
+            "user_profile_id": new_rest_day.user_profile_id,
+            "date": new_rest_day.date
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+def set_goal(user_profile_id: int, name: str, value: float) -> Dict[str, Any]:
+    try:
+        valid_goals = [
+            "daily_skips", "weekly_skips", "weekly_workouts", 
+            "daily_calories", "weekly_calories", "weekly_duration", 
+            "skip_rate_goal"
+        ]
+        
+        if name not in valid_goals:
+            return {"error": f"Invalid goal name. Must be one of: {', '.join(valid_goals)}"}
+            
+        return {
+            "user_profile_id": user_profile_id,
+            "updated_goal": name,
+            "new_value": value
+        }
+    except Exception as e:
+        return {"error": str(e)}

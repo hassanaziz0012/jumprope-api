@@ -75,3 +75,89 @@ get_chart_data_declaration = {
         "required": ["metric", "chart_type", "time_range"],
     },
 }
+
+create_workout_declaration = {
+    "name": "create_workout",
+    "description": "Create a new workout for the user based on provided metrics.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "duration": {
+                "type": "integer",
+                "description": "Duration of the workout in seconds.",
+            },
+            "total_skips": {
+                "type": "integer",
+                "description": "Total number of skips during the workout.",
+            },
+            "date": {
+                "type": "string",
+                "description": "Optional date of the workout in ISO format. Leave empty for the current date/time.",
+            },
+            "avg_skips_per_minute": {
+                "type": "number",
+                "description": "Optional average skips per minute.",
+            },
+            "trips": {
+                "type": "integer",
+                "description": "Optional number of times tripped.",
+            },
+            "calories": {
+                "type": "number",
+                "description": "Optional calories burned.",
+            },
+            "heart_rate_avg": {
+                "type": "integer",
+                "description": "Optional average heart rate.",
+            },
+            "heart_rate_max": {
+                "type": "integer",
+                "description": "Optional maximum heart rate.",
+            },
+            "notes": {
+                "type": "string",
+                "description": "Optional textual notes.",
+            }
+        },
+        "required": ["duration", "total_skips"],
+    },
+}
+
+mark_rest_day_declaration = {
+    "name": "mark_rest_day",
+    "description": "Mark a specific date as a rest day.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "date": {
+                "type": "string",
+                "description": "The date to mark as a rest day in 'YYYY-MM-DD' format.",
+            },
+        },
+        "required": ["date"],
+    },
+}
+
+set_goal_declaration = {
+    "name": "set_goal",
+    "description": "Set a specific goal for the user.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string",
+                "enum": [
+                    "daily_skips", "weekly_skips", "weekly_workouts", 
+                    "daily_calories", "weekly_calories", "weekly_duration", 
+                    "skip_rate_goal"
+                ],
+                "description": "The name of the goal to set.",
+            },
+            "value": {
+                "type": "number",
+                "description": "The value to set the goal to.",
+            },
+        },
+        "required": ["name", "value"],
+    },
+}
