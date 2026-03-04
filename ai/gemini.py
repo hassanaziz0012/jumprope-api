@@ -122,6 +122,7 @@ def save_conversation_message(conversation_id: str, role: str, db: Session, cont
 async def execute_gemini_tool(tool_call, user: UserProfile):
     """Executes a single requested tool and returns the result."""
     args = tool_call.args if tool_call.args else {}
+    logger.info("Executing Gemini tool", extra={"tool_name": tool_call.name, "user_id": user.id})
     print(f"\n--- 🛠️ EXECUTING TOOL: {tool_call.name} ---")
     print(f"Arguments: {args}")
     
@@ -179,6 +180,7 @@ async def ask_gemini(message: str, user: UserProfile, conversation_id: Optional[
     Sends a message to the Gemini API using the Gemini 3 Flash Preview model.
     Passes the predefined system prompt along with the user message.
     """
+    logger.info("Starting up Gemini interaction", extra={"conversation_id": conversation_id, "user_id": user.id, "continue": continue_conversation})
     client = genai.Client(api_key=get_api_key())
     contents = []
     
@@ -198,6 +200,7 @@ async def ask_gemini(message: str, user: UserProfile, conversation_id: Optional[
         yield data
     
     while True:
+        logger.info("Sending request to Gemini API", extra={"context_length": len(contents), "conversation_id": conversation_id})
         print("\n" + "="*50)
         yield f"data: {json.dumps({'type': 'status', 'message': 'Sending request to Gemini...'})}\n\n"
         print("📤 SENDING REQUEST TO GEMINI")
@@ -215,6 +218,7 @@ async def ask_gemini(message: str, user: UserProfile, conversation_id: Optional[
             raise e
         
         if not response.function_calls:
+            logger.info("Received final text response from Gemini", extra={"conversation_id": conversation_id})
             print("\n" + "="*50)
             print("✅ RECEIVED FINAL TEXT RESPONSE")
             print(f"Response: {response.text}")
@@ -226,6 +230,7 @@ async def ask_gemini(message: str, user: UserProfile, conversation_id: Optional[
             yield f"data: {json.dumps({'type': 'final_response', 'text': response.text})}\n\n"
             return
             
+        logger.info("Received function calls from Gemini", extra={"conversation_id": conversation_id, "num_calls": len(response.function_calls)})
         print("\n" + "="*50)
         print(f"⚙️ RECEIVED FUNCTION CALL REQUESTS ({len(response.function_calls)})")
         print("="*50)
@@ -263,5 +268,6 @@ async def ask_gemini(message: str, user: UserProfile, conversation_id: Optional[
         
         # If any write tools were called, finish the request here so the client can handle approval
         if any(tc.name in ["create_workout", "mark_rest_day", "set_goal"] for tc in response.function_calls):
+            logger.info("Closing Gemini stream after writing operations", extra={"conversation_id": conversation_id})
             yield f"data: {json.dumps({'type': 'close'})}\n\n"
             return
