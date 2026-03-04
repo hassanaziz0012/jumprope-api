@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from dotenv import load_dotenv
-from routes import router
+from routes import ai, sync, conversations
+from utils import logger
 from sqladmin import Admin
 from database import engine
 from admin import (
@@ -15,7 +16,8 @@ from admin import (
 import os
 
 load_dotenv()
-print(os.getenv("GEMINI_API_KEY_1"))
+
+logger.info("Application starting up...")
 
 app = FastAPI(
     title="JumpRope API",
@@ -32,4 +34,6 @@ admin.add_view(RestDayAdmin)
 admin.add_view(ConversationAdmin)
 admin.add_view(ConversationMessageAdmin)
 
-app.include_router(router)
+app.include_router(ai.router, tags=["AI Agent"])
+app.include_router(sync.router, prefix="/sync", tags=["Data Sync"])
+app.include_router(conversations.router, prefix="/conversations", tags=["Conversations"])
