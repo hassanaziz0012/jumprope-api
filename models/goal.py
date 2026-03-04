@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, String
 from sqlalchemy.sql import func
 from .base import Base
 
@@ -6,7 +6,8 @@ class Goal(Base):
     __tablename__ = "goals"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_profile_id = Column(Integer, ForeignKey("user_profile.id"), nullable=False)
+    sync_id = Column(String, nullable=True)
+    user_sync_token = Column(String, ForeignKey("user_profile.sync_token"), nullable=False)
     daily_skips = Column(Integer, nullable=True)
     weekly_skips = Column(Integer, nullable=True)
     weekly_workouts = Column(Integer, nullable=True)

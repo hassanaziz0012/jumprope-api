@@ -6,6 +6,7 @@ class UserProfile(Base):
     __tablename__ = "user_profile"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    sync_id = Column(String, nullable=True)
     sync_token = Column(String, unique=True, index=True, nullable=True)
     name = Column(String, nullable=False)
     email = Column(String, nullable=True)

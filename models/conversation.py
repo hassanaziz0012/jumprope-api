@@ -12,8 +12,9 @@ class Conversation(Base):
 
     # Unique ID for the conversation (UUID as string is good for mobile sync)
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    sync_id = Column(String, nullable=True)
     title = Column(String, nullable=True, default="New Chat")
-    user_profile_id = Column(Integer, ForeignKey("user_profile.id", ondelete="CASCADE"), nullable=True)
+    user_sync_token = Column(String, ForeignKey("user_profile.sync_token", ondelete="CASCADE"), nullable=True)
     
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
@@ -31,6 +32,7 @@ class ConversationMessage(Base):
     __tablename__ = "conversation_message"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    sync_id = Column(String, nullable=True)
     conversation_id = Column(String, ForeignKey("conversation.id", ondelete="CASCADE"), nullable=False)
     
     # The role of the entity that sent this message: 'user', 'model', or 'tool' / 'function'

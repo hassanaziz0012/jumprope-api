@@ -6,7 +6,8 @@ class Workout(Base):
     __tablename__ = "workout"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_profile_id = Column(Integer, ForeignKey("user_profile.id"), nullable=False)
+    sync_id = Column(String, nullable=True)
+    user_sync_token = Column(String, ForeignKey("user_profile.sync_token"), nullable=False)
     date = Column(DateTime, nullable=False, server_default=func.now())
     duration = Column(Integer, nullable=False)
     total_skips = Column(Integer, nullable=False)
