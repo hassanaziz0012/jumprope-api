@@ -130,28 +130,25 @@ async def execute_gemini_tool(tool_call, user: UserProfile):
     logger.info("Executing Gemini tool", extra={"tool_name": tool_call.name, "user_id": user.id})
     print(f"\n--- 🛠️ EXECUTING TOOL: {tool_call.name} ---")
     print(f"Arguments: {args}")
-    
+
+    args_dict = dict(args)
+    args_dict["user_sync_token"] = user.sync_token
+
     if tool_call.name == "get_workouts":
-        result = await asyncio.to_thread(get_workouts, **args)
+        result = await asyncio.to_thread(get_workouts, **args_dict)
     elif tool_call.name == "get_workout_details":
-        result = await asyncio.to_thread(get_workout_details, **args)
+        result = await asyncio.to_thread(get_workout_details, **args_dict)
     elif tool_call.name == "get_streaks":
-        result = await asyncio.to_thread(get_streaks, **args)
+        result = await asyncio.to_thread(get_streaks, **args_dict)
     elif tool_call.name == "get_goals":
-        result = await asyncio.to_thread(get_goals, **args)
+        result = await asyncio.to_thread(get_goals, **args_dict)
     elif tool_call.name == "get_chart_data":
-        result = await asyncio.to_thread(get_chart_data, **args)
+        result = await asyncio.to_thread(get_chart_data, **args_dict)
     elif tool_call.name == "create_workout":
-        args_dict = dict(args)
-        args_dict["user_profile_id"] = user.id
         result = await asyncio.to_thread(create_workout, **args_dict)
     elif tool_call.name == "mark_rest_day":
-        args_dict = dict(args)
-        args_dict["user_profile_id"] = user.id
         result = await asyncio.to_thread(mark_rest_day, **args_dict)
     elif tool_call.name == "set_goal":
-        args_dict = dict(args)
-        args_dict["user_profile_id"] = user.id
         result = await asyncio.to_thread(set_goal, **args_dict)
     else:
         result = {"error": f"Unknown function: {tool_call.name}"}
