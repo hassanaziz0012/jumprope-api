@@ -67,12 +67,16 @@ async def get_or_create_conversation(message: str, user: UserProfile, conversati
         conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
         if not conversation:
             conversation = Conversation(id=conversation_id)
-            conversation.user_profile_id = user.id
+            conversation.user_sync_token = user.sync_token
             db.add(conversation)
+            db.commit()
+        else:
+            # Ensure the existing conversation has the sync token assigned
+            conversation.user_sync_token = user.sync_token
             db.commit()
     else:
         conversation = Conversation()
-        conversation.user_profile_id = user.id
+        conversation.user_sync_token = user.sync_token
         db.add(conversation)
         
         # Generate title
