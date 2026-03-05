@@ -29,6 +29,7 @@ from .functions import (
     set_goal,
 )
 from .cycle_keys import get_api_key
+from utils import logger
 
 gemini_tools = types.Tool(
     function_declarations=[
