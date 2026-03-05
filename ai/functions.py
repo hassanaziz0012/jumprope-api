@@ -11,13 +11,14 @@ from typing import Dict, Any, List
 def get_db_session() -> Session:
     return SessionLocal()
 
-def get_workouts(date_from: str, date_to: str) -> Dict[str, Any]:
+def get_workouts(user_sync_token: str, date_from: str, date_to: str) -> Dict[str, Any]:
     db = get_db_session()
     try:
         from_dt = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
         to_dt = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
         
         workouts = db.query(Workout).filter(
+            Workout.user_sync_token == user_sync_token,
             func.date(Workout.date) >= from_dt.date(),
             func.date(Workout.date) <= to_dt.date()
         ).all()
@@ -36,10 +37,10 @@ def get_workouts(date_from: str, date_to: str) -> Dict[str, Any]:
     finally:
         db.close()
 
-def get_workout_details(workout_id: str) -> Dict[str, Any]:
+def get_workout_details(user_sync_token: str, workout_id: str) -> Dict[str, Any]:
     db = get_db_session()
     try:
-        workout = db.query(Workout).filter(Workout.id == int(workout_id)).first()
+        workout = db.query(Workout).filter(Workout.id == int(workout_id), Workout.user_sync_token == user_sync_token).first()
         if workout:
             return {
                 "id": workout.id,
@@ -59,11 +60,11 @@ def get_workout_details(workout_id: str) -> Dict[str, Any]:
     finally:
         db.close()
 
-def get_streaks() -> Dict[str, Any]:
+def get_streaks(user_sync_token: str) -> Dict[str, Any]:
     db = get_db_session()
     try:
-        workouts = db.query(Workout.date).order_by(Workout.date.asc()).all()
-        rest_days = db.query(RestDay.date).all()
+        workouts = db.query(Workout.date).filter(Workout.user_sync_token == user_sync_token).order_by(Workout.date.asc()).all()
+        rest_days = db.query(RestDay.date).filter(RestDay.user_sync_token == user_sync_token).all()
         
         workout_dates = sorted(list(set([w[0].date() for w in workouts if w[0]])))
         rest_dates_set = set()
@@ -133,15 +134,15 @@ def get_streaks() -> Dict[str, Any]:
     finally:
         db.close()
 
-def get_goals() -> Dict[str, Any]:
+def get_goals(user_sync_token: str) -> Dict[str, Any]:
     db = get_db_session()
     try:
-        goals = db.query(Goal).all()
+        goals = db.query(Goal).filter(Goal.user_sync_token == user_sync_token).all()
         today = date.today()
         start_of_week = today - timedelta(days=today.weekday())
         
-        workouts_today = db.query(Workout).filter(func.date(Workout.date) == today).all()
-        workouts_week = db.query(Workout).filter(func.date(Workout.date) >= start_of_week).all()
+        workouts_today = db.query(Workout).filter(Workout.user_sync_token == user_sync_token, func.date(Workout.date) == today).all()
+        workouts_week = db.query(Workout).filter(Workout.user_sync_token == user_sync_token, func.date(Workout.date) >= start_of_week).all()
         
         skips_today = sum(w.total_skips for w in workouts_today)
         skips_week = sum(w.total_skips for w in workouts_week)
@@ -182,13 +183,13 @@ def get_goals() -> Dict[str, Any]:
     finally:
         db.close()
 
-def get_chart_data(metric: str, chart_type: str, time_range: str) -> Dict[str, Any]:
+def get_chart_data(user_sync_token: str, metric: str, chart_type: str, time_range: str) -> Dict[str, Any]:
     db = get_db_session()
     try:
         days = int(time_range.replace('d', '')) if time_range.endswith('d') else 7
         start_date = date.today() - timedelta(days=days)
         
-        workouts = db.query(Workout).filter(func.date(Workout.date) >= start_date).order_by(Workout.date.asc()).all()
+        workouts = db.query(Workout).filter(Workout.user_sync_token == user_sync_token, func.date(Workout.date) >= start_date).order_by(Workout.date.asc()).all()
         
         data_points = []
         for w in workouts:
@@ -219,7 +220,7 @@ def get_chart_data(metric: str, chart_type: str, time_range: str) -> Dict[str, A
         db.close()
 
 def create_workout(
-    user_profile_id: int,
+    user_sync_token: str,
     duration: int,
     total_skips: int,
     date: str = None,
@@ -237,7 +238,7 @@ def create_workout(
             dt = datetime.now()
             
         return {
-            "user_profile_id": user_profile_id,
+            "user_sync_token": user_sync_token,
             "date": dt.isoformat(),
             "duration": duration,
             "total_skips": total_skips,
@@ -251,17 +252,16 @@ def create_workout(
     except Exception as e:
         return {"error": str(e)}
 
-def mark_rest_day(user_profile_id: int, date: str) -> Dict[str, Any]:
+def mark_rest_day(user_sync_token: str, date: str) -> Dict[str, Any]:
     try:
         return {
-            "id": new_rest_day.id,
-            "user_profile_id": new_rest_day.user_profile_id,
-            "date": new_rest_day.date
+            "user_sync_token": user_sync_token,
+            "date": date
         }
     except Exception as e:
         return {"error": str(e)}
 
-def set_goal(user_profile_id: int, name: str, value: float) -> Dict[str, Any]:
+def set_goal(user_sync_token: str, name: str, value: float) -> Dict[str, Any]:
     try:
         valid_goals = [
             "daily_skips", "weekly_skips", "weekly_workouts", 
@@ -273,7 +273,7 @@ def set_goal(user_profile_id: int, name: str, value: float) -> Dict[str, Any]:
             return {"error": f"Invalid goal name. Must be one of: {', '.join(valid_goals)}"}
             
         return {
-            "user_profile_id": user_profile_id,
+            "user_sync_token": user_sync_token,
             "updated_goal": name,
             "new_value": value
         }
