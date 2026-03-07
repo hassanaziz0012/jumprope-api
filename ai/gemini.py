@@ -61,7 +61,7 @@ async def generate_conversation_title(message: str) -> str:
         print(f"Error generating title: {e}")
         return "New Chat"
 
-async def get_or_create_conversation(message: str, user: UserProfile, conversation_id: Optional[str], db: Session) -> Conversation:
+async def get_or_create_conversation(message: str, user: UserProfile, conversation_id: Optional[str], db: Session, title: str = "") -> Conversation:
     """Finds an existing conversation or creates a new one, generating a title if necessary."""
     if conversation_id:
         conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
@@ -80,8 +80,10 @@ async def get_or_create_conversation(message: str, user: UserProfile, conversati
         db.add(conversation)
         
         # Generate title
-        title = await generate_conversation_title(message)
-        conversation.title = title
+        if not title:
+            conversation.title = await generate_conversation_title(message)
+        else:
+            conversation.title = title
         
         db.commit()
         
@@ -177,19 +179,16 @@ async def generate_gemini_response(client: genai.Client, contents: list, yield_f
                 continue
             raise e
 
-async def ask_gemini(message: str, user: UserProfile, conversation_id: Optional[str] = None, db: Session = None, continue_conversation: bool = False):
+async def ask_gemini(message: str, user: UserProfile, conversation: Conversation, db: Session = None, continue_conversation: bool = False):
     """
     Sends a message to the Gemini API using the Gemini 3 Flash Preview model.
     Passes the predefined system prompt along with the user message.
     """
-    logger.info("Starting up Gemini interaction", extra={"conversation_id": conversation_id, "user_id": user.id, "continue": continue_conversation})
+    logger.info("Starting up Gemini interaction", extra={"conversation_id": conversation.id, "user_id": user.id, "continue": continue_conversation})
     client = genai.Client(api_key=get_api_key())
     contents = []
     
     if db:
-        conversation = await get_or_create_conversation(message, user, conversation_id, db)
-        yield f"data: {json.dumps({'type': 'conversation_id', 'id': conversation.id, 'title': conversation.title})}\n\n"
-        
         contents = load_chat_history_for_gemini(conversation, db)
         if not continue_conversation:
             save_conversation_message(conversation.id, "user", db, content=message)
@@ -202,7 +201,7 @@ async def ask_gemini(message: str, user: UserProfile, conversation_id: Optional[
         yield data
     
     while True:
-        logger.info("Sending request to Gemini API", extra={"context_length": len(contents), "conversation_id": conversation_id})
+        logger.info("Sending request to Gemini API", extra={"context_length": len(contents), "conversation_id": conversation.id})
         print("\n" + "="*50)
         yield f"data: {json.dumps({'type': 'status', 'message': 'Sending request to Gemini...'})}\n\n"
         print("📤 SENDING REQUEST TO GEMINI")
@@ -220,7 +219,7 @@ async def ask_gemini(message: str, user: UserProfile, conversation_id: Optional[
             raise e
         
         if not response.function_calls:
-            logger.info("Received final text response from Gemini", extra={"conversation_id": conversation_id})
+            logger.info("Received final text response from Gemini", extra={"conversation_id": conversation.id})
             print("\n" + "="*50)
             print("✅ RECEIVED FINAL TEXT RESPONSE")
             print(f"Response: {response.text}")
@@ -232,7 +231,7 @@ async def ask_gemini(message: str, user: UserProfile, conversation_id: Optional[
             yield f"data: {json.dumps({'type': 'final_response', 'text': response.text})}\n\n"
             return
             
-        logger.info("Received function calls from Gemini", extra={"conversation_id": conversation_id, "num_calls": len(response.function_calls)})
+        logger.info("Received function calls from Gemini", extra={"conversation_id": conversation.id, "num_calls": len(response.function_calls)})
         print("\n" + "="*50)
         print(f"⚙️ RECEIVED FUNCTION CALL REQUESTS ({len(response.function_calls)})")
         print("="*50)
@@ -270,6 +269,6 @@ async def ask_gemini(message: str, user: UserProfile, conversation_id: Optional[
         
         # If any write tools were called, finish the request here so the client can handle approval
         if any(tc.name in ["create_workout", "mark_rest_day", "set_goal"] for tc in response.function_calls):
-            logger.info("Closing Gemini stream after writing operations", extra={"conversation_id": conversation_id})
+            logger.info("Closing Gemini stream after writing operations", extra={"conversation_id": conversation.id})
             yield f"data: {json.dumps({'type': 'close'})}\n\n"
             return

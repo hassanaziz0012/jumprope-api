@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Optional
 from database import get_db
-from ai.gemini import ask_gemini
+from ai.gemini import ask_gemini, get_or_create_conversation
 from models.user_profile import UserProfile
 from utils import logger
 
@@ -26,16 +26,21 @@ async def ask_agent(request: AskAgentRequest, db: Session = Depends(get_db)):
         
     async def event_generator():
         try:
+            if not request.conversation_id:
+                yield f"data: {json.dumps({'type': 'status', 'message': 'Generating conversation...'})}\n\n"
+                
+            conversation = await get_or_create_conversation(request.message, user, request.conversation_id, db)
+            yield f"data: {json.dumps({'type': 'conversation_id', 'id': conversation.id, 'title': conversation.title})}\n\n"
+
             async for update in ask_gemini(
                 message=request.message, 
                 user=user, 
-                conversation_id=request.conversation_id, 
+                conversation=conversation, 
                 db=db,
                 continue_conversation=request.continue_conversation
             ):
                 yield update
         except Exception as e:
-            print(f"Error generating response: {e}")
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
