@@ -29,6 +29,7 @@ import models.conversation
 import models.goal
 import models.rest_day
 import models.user_profile
+import models.weekly_digest
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
