@@ -18,3 +18,4 @@ wheels/
 # Database volumes
 postgres_data/
 .vercel
+.env*.local
