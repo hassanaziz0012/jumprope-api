@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -6,7 +7,9 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from database import get_db
 from ai.gemini import ask_gemini, get_or_create_conversation
+from ai.prompts import WEEKLY_DIGEST_PROMPT
 from models.user_profile import UserProfile
+from models.weekly_digest import WeeklyDigest
 from utils import logger
 
 router = APIRouter()
@@ -41,6 +44,72 @@ async def ask_agent(request: AskAgentRequest, db: Session = Depends(get_db)):
             ):
                 yield update
         except Exception as e:
+            print(f"Error generating response: {e}")
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+class GenerateWeeklyDigestRequest(BaseModel):
+    sync_token: str
+
+@router.post("/generate-weekly-digest")
+async def generate_weekly_digest(request: GenerateWeeklyDigestRequest, db: Session = Depends(get_db)):
+    logger.info("Received generate-weekly-digest request", extra={"sync_token": request.sync_token})
+    user = db.query(UserProfile).filter(UserProfile.sync_token == request.sync_token).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    async def event_generator():
+        try:
+            yield f"data: {json.dumps({'type': 'status', 'message': 'Generating digest...'})}\n\n"
+            
+            message = WEEKLY_DIGEST_PROMPT.replace("{{current_date}}", datetime.now().strftime("%Y-%m-%d"))
+            conversation = await get_or_create_conversation(message, user, None, db, title="Weekly Digest")
+            yield f"data: {json.dumps({'type': 'conversation_id', 'id': conversation.id, 'title': conversation.title})}\n\n"
+
+            final_response_text = ""
+            async for update in ask_gemini(
+                message=message, 
+                user=user, 
+                conversation=conversation, 
+                db=db,
+                continue_conversation=False
+            ):
+                yield update
+                
+                # Intercept the final response to save the weekly digest
+                if update.startswith("data: ") and '"type": "final_response"' in update:
+                    data = json.loads(update[6:].strip())
+                    final_response_text = data.get("text", "")
+                    
+            if final_response_text:
+                new_digest = WeeklyDigest(
+                    user_sync_token=user.sync_token,
+                    digest=final_response_text
+                )
+                db.add(new_digest)
+                
+                # Delete the temporary conversation
+                db.delete(conversation)
+                db.commit()
+                
+        except Exception as e:
+            print(f"Error generating response: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@router.get("/weekly-digests")
+async def get_weekly_digests(sync_token: str, db: Session = Depends(get_db)):
+    logger.info("Received get-weekly-digests request", extra={"sync_token": sync_token})
+    
+    # Verify user ownership and fetch digests
+    digests = (
+        db.query(WeeklyDigest.created_at, WeeklyDigest.digest)
+        .filter(WeeklyDigest.user_sync_token == sync_token)
+        .order_by(WeeklyDigest.created_at.desc())
+        .all()
+    )
+    
+    # Format response as a list of dictionaries
+    return [{"created_at": d.created_at, "digest": d.digest} for d in digests]
