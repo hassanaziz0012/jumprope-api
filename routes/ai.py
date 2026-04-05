@@ -10,6 +10,7 @@ from ai.gemini import ask_gemini, get_or_create_conversation
 from ai.prompts import WEEKLY_DIGEST_PROMPT
 from models.user_profile import UserProfile
 from models.weekly_digest import WeeklyDigest
+from models.conversation import Conversation
 from utils import logger
 
 router = APIRouter()
@@ -27,6 +28,19 @@ async def ask_agent(request: AskAgentRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
+    if not request.conversation_id:
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        daily_conversations_count = (
+            db.query(Conversation)
+            .filter(
+                Conversation.user_sync_token == user.sync_token,
+                Conversation.created_at >= today_start
+            )
+            .count()
+        )
+        if daily_conversations_count >= 3:
+            raise HTTPException(status_code=429, detail="Daily conversation limit reached. You can only create 3 conversations per day.")
+
     async def event_generator():
         try:
             if not request.conversation_id:
