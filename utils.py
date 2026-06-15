@@ -5,12 +5,23 @@ from axiom_py.logging import AxiomHandler
 import axiom_py
 import logging
 
+import sys
+
 def setup_logger():
-    client = axiom_py.Client()
-    handler = AxiomHandler(client, dataset="jumprope-api-logs")
-    logging.getLogger().addHandler(handler)
-    logging.getLogger().setLevel(logging.INFO)
-    return logging.getLogger()
+    # client = axiom_py.Client()
+    # handler = AxiomHandler(client, dataset="jumprope-api-logs")
+    # logging.getLogger().addHandler(handler)
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    
+    # Configure standard console logging to stdout
+    if not any(isinstance(h, logging.StreamHandler) for h in logger.handlers):
+        handler = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter('[%(asctime)s] %(levelname)s in %(module)s: %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        
+    return logger
 
 logger = setup_logger()
 
