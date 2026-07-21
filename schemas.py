@@ -9,6 +9,9 @@ class UserProfileSchema(BaseModel):
     email: Optional[str] = None
     image: Optional[str] = None
     ai_enabled: Optional[bool] = False
+    api_key: Optional[str] = None
+    ai_provider: Optional[str] = None
+    ai_model: Optional[str] = None
 
 class WorkoutSchema(BaseModel):
     id: int

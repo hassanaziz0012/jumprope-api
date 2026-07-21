@@ -12,4 +12,7 @@ class UserProfile(Base):
     email = Column(String, nullable=True)
     image = Column(String, nullable=True)
     ai_enabled = Column(Boolean, default=False)
+    api_key = Column(String, nullable=True)
+    ai_provider = Column(String, nullable=True)
+    ai_model = Column(String, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
