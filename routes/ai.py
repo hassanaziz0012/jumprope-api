@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Optional
 from database import get_db
-from ai.gemini import ask_gemini, get_or_create_conversation
+from ai.agent import ask_agent, get_or_create_conversation, AVAILABLE_MODELS
 from ai.prompts import WEEKLY_DIGEST_PROMPT
 from models.user_profile import UserProfile
 from models.weekly_digest import WeeklyDigest
@@ -14,6 +14,10 @@ from models.conversation import Conversation
 from utils import logger
 
 router = APIRouter()
+
+@router.get("/models/available")
+async def get_available_models():
+    return AVAILABLE_MODELS
 
 class AskAgentRequest(BaseModel):
     message: str
@@ -49,7 +53,7 @@ async def ask_agent(request: AskAgentRequest, db: Session = Depends(get_db)):
             conversation = await get_or_create_conversation(request.message, user, request.conversation_id, db)
             yield f"data: {json.dumps({'type': 'conversation_id', 'id': conversation.id, 'title': conversation.title})}\n\n"
 
-            async for update in ask_gemini(
+            async for update in ask_agent(
                 message=request.message, 
                 user=user, 
                 conversation=conversation, 
@@ -82,7 +86,7 @@ async def generate_weekly_digest(request: GenerateWeeklyDigestRequest, db: Sessi
             yield f"data: {json.dumps({'type': 'conversation_id', 'id': conversation.id, 'title': conversation.title})}\n\n"
 
             final_response_text = ""
-            async for update in ask_gemini(
+            async for update in ask_agent(
                 message=message, 
                 user=user, 
                 conversation=conversation, 
