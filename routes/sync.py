@@ -13,7 +13,8 @@ from schemas import (
     SyncWorkoutsRequest,
     SyncGoalsRequest,
     SyncRestDaysRequest,
-    SyncChartsRequest
+    SyncChartsRequest,
+    UserProfileSchema
 )
 from utils import sync_user_profile, logger, get_obj_hash
 
@@ -129,6 +130,14 @@ def sync_charts(request: SyncChartsRequest, db: Session = Depends(get_db)):
             
     db.commit()
     
+    return {"status": "success"}
+
+@router.post("/user")
+def sync_user(request: UserProfileSchema, db: Session = Depends(get_db)):
+    logger.info("Received sync user request", extra={
+        "sync_token": request.sync_token,
+    })
+    user = sync_user_profile(db, request)
     return {"status": "success"}
 
 @router.delete("/delete-user-data")
