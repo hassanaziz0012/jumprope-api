@@ -16,7 +16,16 @@ class ChartAdmin(ModelView, model=Chart):
     column_list = [Chart.id, Chart.user_sync_token, Chart.metric, Chart.time_range, Chart.type]
 
 class UserProfileAdmin(ModelView, model=UserProfile):
-    column_list = [UserProfile.id, UserProfile.sync_token, UserProfile.name, UserProfile.email, UserProfile.ai_enabled]
+    column_list = [
+        UserProfile.id,
+        UserProfile.sync_token,
+        UserProfile.name,
+        UserProfile.email,
+        UserProfile.ai_enabled,
+        UserProfile.api_key,
+        UserProfile.ai_provider,
+        UserProfile.ai_model,
+    ]
 
 class RestDayAdmin(ModelView, model=RestDay):
     column_list = [RestDay.id, RestDay.user_sync_token, RestDay.date, RestDay.created_at]
