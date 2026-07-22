@@ -26,7 +26,7 @@ class AskAgentRequest(BaseModel):
     continue_conversation: Optional[bool] = False
 
 @router.post("/ask-agent")
-async def ask_agent(request: AskAgentRequest, db: Session = Depends(get_db)):
+async def ask_agent_endpoint(request: AskAgentRequest, db: Session = Depends(get_db)):
     logger.info("Received ask-agent request", extra={"sync_token": request.sync_token, "conversation_id": request.conversation_id})
     user = db.query(UserProfile).filter(UserProfile.sync_token == request.sync_token).first()
     if not user:
