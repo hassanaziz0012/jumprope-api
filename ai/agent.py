@@ -314,31 +314,38 @@ def save_conversation_message(conversation_id: str, role: str, db: Session, cont
 
 async def execute_agent_tool(tool_name: str, args: Dict[str, Any], user: UserProfile):
     """Executes a single requested tool and returns the result."""
+    import inspect
+
     logger.info("Executing Agent tool", extra={"tool_name": tool_name, "user_id": user.id})
     print(f"\n--- 🛠️ EXECUTING TOOL: {tool_name} ---")
     print(f"Arguments: {args}")
 
-    args_dict = dict(args)
-    args_dict["user_sync_token"] = user.sync_token
+    tool_mapping = {
+        "get_workouts": get_workouts,
+        "get_workout_details": get_workout_details,
+        "get_streaks": get_streaks,
+        "get_goals": get_goals,
+        "get_chart_data": get_chart_data,
+        "create_workout": create_workout,
+        "mark_rest_day": mark_rest_day,
+        "set_goal": set_goal,
+    }
 
-    if tool_name == "get_workouts":
-        result = await asyncio.to_thread(get_workouts, **args_dict)
-    elif tool_name == "get_workout_details":
-        result = await asyncio.to_thread(get_workout_details, **args_dict)
-    elif tool_name == "get_streaks":
-        result = await asyncio.to_thread(get_streaks, **args_dict)
-    elif tool_name == "get_goals":
-        result = await asyncio.to_thread(get_goals, **args_dict)
-    elif tool_name == "get_chart_data":
-        result = await asyncio.to_thread(get_chart_data, **args_dict)
-    elif tool_name == "create_workout":
-        result = await asyncio.to_thread(create_workout, **args_dict)
-    elif tool_name == "mark_rest_day":
-        result = await asyncio.to_thread(mark_rest_day, **args_dict)
-    elif tool_name == "set_goal":
-        result = await asyncio.to_thread(set_goal, **args_dict)
-    else:
+    func = tool_mapping.get(tool_name)
+    if not func:
         result = {"error": f"Unknown function: {tool_name}"}
+    else:
+        args_dict = dict(args)
+        args_dict["user_sync_token"] = user.sync_token
+
+        # Filter args_dict to only include arguments that match the target function's signature
+        sig = inspect.signature(func)
+        filtered_args = {
+            k: v for k, v in args_dict.items()
+            if k in sig.parameters
+        }
+
+        result = await asyncio.to_thread(func, **filtered_args)
         
     print(f"Result: {result}")
     print("-" * 40)
