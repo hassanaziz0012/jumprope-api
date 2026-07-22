@@ -15,4 +15,6 @@ class UserProfile(Base):
     api_key = Column(String, nullable=True)
     ai_provider = Column(String, nullable=True)
     ai_model = Column(String, nullable=True)
+    password_hash = Column(String, nullable=True)
+    password_salt = Column(String, nullable=True)
     created_at = Column(DateTime, server_default=func.now())

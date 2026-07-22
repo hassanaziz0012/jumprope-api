@@ -13,6 +13,29 @@ class UserProfileSchema(BaseModel):
     ai_provider: Optional[str] = None
     ai_model: Optional[str] = None
 
+class SignUpRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+    ai_enabled: Optional[bool] = False
+    sync_token: Optional[str] = None
+
+class SignInRequest(BaseModel):
+    email: str
+    password: str
+
+class ChangePasswordRequest(BaseModel):
+    email: str
+    current_password: str
+    new_password: str
+
+class AuthResponse(BaseModel):
+    status: str
+    sync_token: str
+    name: str
+    email: Optional[str] = None
+    ai_enabled: bool = False
+
 class WorkoutSchema(BaseModel):
     id: int
     date: datetime

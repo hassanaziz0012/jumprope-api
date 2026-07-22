@@ -25,14 +25,14 @@ def setup_logger():
 
 logger = setup_logger()
 
+from fastapi import HTTPException
+
 def sync_user_profile(db: Session, user_data):
     user = db.query(UserProfile).filter(UserProfile.sync_token == user_data.sync_token).first()
-    if user:
-        for key, value in user_data.model_dump(exclude={'id'}).items():
-            setattr(user, key, value)
-    else:
-        user = UserProfile(**user_data.model_dump(exclude={'id'}))
-        db.add(user)
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found")
+    for key, value in user_data.model_dump(exclude={'id'}).items():
+        setattr(user, key, value)
     db.commit()
     db.refresh(user)
     return user

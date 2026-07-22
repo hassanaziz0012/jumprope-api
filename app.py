@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from dotenv import load_dotenv
-from routes import ai, sync, conversations
+from routes import ai, sync, conversations, auth
 from utils import logger
 from sqladmin import Admin
 from database import engine
@@ -34,6 +34,7 @@ admin.add_view(RestDayAdmin)
 admin.add_view(ConversationAdmin)
 admin.add_view(ConversationMessageAdmin)
 
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(ai.router, tags=["AI Agent"])
 app.include_router(sync.router, prefix="/sync", tags=["Data Sync"])
 app.include_router(conversations.router, prefix="/conversations", tags=["Conversations"])
