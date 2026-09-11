@@ -222,6 +222,25 @@ def get_llm(user: UserProfile):
     else:
         raise ValueError(f"Unsupported AI provider: {provider}")
 
+def extract_text_from_content(content: Any) -> str:
+    """Extracts a plain string from Langchain message content (which may be a str or list of dicts/strings)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        text_parts = []
+        for block in content:
+            if isinstance(block, str):
+                text_parts.append(block)
+            elif isinstance(block, dict):
+                if block.get("type") == "text":
+                    text_parts.append(block.get("text", ""))
+                elif "text" in block:
+                    text_parts.append(str(block["text"]))
+        return "".join(text_parts)
+    if isinstance(content, dict):
+        return content.get("text", str(content))
+    return str(content) if content is not None else ""
+
 async def generate_conversation_title(message: str, user: Optional[UserProfile] = None) -> str:
     """Generates a title for a new conversation based on the first message."""
     if not user or not user.api_key or not user.ai_provider:
@@ -233,7 +252,8 @@ async def generate_conversation_title(message: str, user: Optional[UserProfile] 
             HumanMessage(content=message)
         ]
         response = await llm.ainvoke(messages)
-        return response.content.strip()
+        title = extract_text_from_content(response.content).strip()
+        return title or "New Chat"
     except Exception as e:
         logger.error(f"Error generating title: {e}")
         return "New Chat"
@@ -272,7 +292,7 @@ def load_chat_history_for_langchain(conversation: Conversation, db: Session) -> 
     
     for msg in db_messages:
         if msg.role == "user":
-            messages.append(HumanMessage(content=msg.content))
+            messages.append(HumanMessage(content=msg.content or ""))
         elif msg.role == "model":
             if msg.tool_calls:
                 lc_tool_calls = []
@@ -287,7 +307,7 @@ def load_chat_history_for_langchain(conversation: Conversation, db: Session) -> 
                     })
                 messages.append(AIMessage(content=msg.content or "", tool_calls=lc_tool_calls))
             else:
-                messages.append(AIMessage(content=msg.content))
+                messages.append(AIMessage(content=msg.content or ""))
         elif msg.role in ("tool", "function"):
             if msg.tool_results:
                 for idx, tr in enumerate(msg.tool_results):
@@ -299,8 +319,11 @@ def load_chat_history_for_langchain(conversation: Conversation, db: Session) -> 
                     ))
     return messages
 
-def save_conversation_message(conversation_id: str, role: str, db: Session, content: str = None, tool_calls: list = None, tool_results: list = None) -> ConversationMessage:
+def save_conversation_message(conversation_id: str, role: str, db: Session, content: Any = None, tool_calls: list = None, tool_results: list = None) -> ConversationMessage:
     """Helper to save a message to the database."""
+    if content is not None and not isinstance(content, str):
+        content = extract_text_from_content(content)
+        
     msg = ConversationMessage(
         conversation_id=conversation_id, 
         role=role, 
@@ -386,16 +409,17 @@ async def ask_agent(message: str, user: UserProfile, conversation: Conversation,
         response = await model_with_tools.ainvoke([system_message] + messages)
         
         if not response.tool_calls:
+            text_content = extract_text_from_content(response.content)
             logger.info("Received final text response from Agent", extra={"conversation_id": conversation.id})
             print("\n" + "="*50)
             print("✅ RECEIVED FINAL TEXT RESPONSE")
-            print(f"Response: {response.content}")
+            print(f"Response: {text_content}")
             print("="*50 + "\n")
             
             if db:
-                save_conversation_message(conversation.id, "model", db, content=response.content)
+                save_conversation_message(conversation.id, "model", db, content=text_content)
                 
-            yield f"data: {json.dumps({'type': 'final_response', 'text': response.content})}\n\n"
+            yield f"data: {json.dumps({'type': 'final_response', 'text': text_content})}\n\n"
             return
             
         logger.info("Received tool calls from Agent", extra={"conversation_id": conversation.id, "num_calls": len(response.tool_calls)})
