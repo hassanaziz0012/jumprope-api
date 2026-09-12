@@ -405,8 +405,27 @@ async def ask_agent(message: str, user: UserProfile, conversation: Conversation,
         print(f"Payload context length: {len(messages)} item(s)")
         print("="*50)
         
-        # Invoke Langchain model with system prompt as the first message
-        response = await model_with_tools.ainvoke([system_message] + messages)
+        # Invoke Langchain model with system prompt as the first message with automatic retry for tool argument generation failures
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            try:
+                response = await model_with_tools.ainvoke([system_message] + messages)
+                break
+            except Exception as e:
+                err_msg = str(e)
+                is_recoverable_tool_error = (
+                    "tool_use_failed" in err_msg
+                    or "Failed to parse tool call arguments" in err_msg
+                    or "tool call validation failed" in err_msg
+                )
+                if attempt < max_retries and is_recoverable_tool_error:
+                    logger.warning(
+                        f"Tool call generation failed (attempt {attempt + 1}/{max_retries + 1}), retrying... Error: {err_msg}"
+                    )
+                    print(f"⚠️ Tool call generation failed (attempt {attempt + 1}/{max_retries + 1}), retrying: {err_msg}")
+                    await asyncio.sleep(0.5)
+                    continue
+                raise
         
         if not response.tool_calls:
             text_content = extract_text_from_content(response.content)
